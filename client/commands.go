@@ -15,13 +15,12 @@ func (cli *WarptenCli) CmdHelp(args ...string) error {
 }
 
 // 请求并输出版本号
-func (cli *WarptenCli) CmdVersion(args ...string) error {
+func (cli *WarptenCli) CmdVersion(args ...string) string {
 	body, _, err := readBody(cli.call("GET", "/version", nil))
 	if err != nil {
-		return err
+		return err.Error()
 	}
-	fmt.Fprintf(os.Stdout, "Warpten version: %s\n", body)
-	return nil
+	return string(body)
 }
 
 // 请求并输出所有播放列表

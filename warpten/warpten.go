@@ -2,11 +2,12 @@
 package main
 
 import (
+	gc "code.google.com/p/goncurses"
 	"fmt"
-	"gopkg.in/qml.v1"
 	"log"
 	"os"
 	"os/exec"
+	"warpten/client"
 )
 
 func main() {
@@ -17,25 +18,42 @@ func main() {
 	}
 
 	// 启动gui
-	if err := qml.Run(run); err != nil {
+	stdscr, err := gc.Init()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
-	// 关闭服务器守护程序
-	cmd.Process.Signal(os.Interrupt)
-}
+	defer gc.End()
 
-func run() error {
-	engine := qml.NewEngine()
+	gc.StartColor()
+	gc.Raw(true)
+	gc.Echo(false)
+	gc.Cursor(0)
+	stdscr.Keypad(true)
+	gc.InitPair(1, gc.C_RED, gc.C_BLACK)
+	gc.InitPair(2, gc.C_CYAN, gc.C_BLACK)
 
-	controls, err := engine.LoadFile("warpten.qml")
-	if err != nil {
-		return err
+	var cli *client.WarptenCli = client.NewWarptenCli("unix", "/tmp/warpten.sock")
+	version := cli.CmdVersion()
+
+	y, x := stdscr.MaxYX()
+	header := "Warpten Player"
+	stdscr.ColorOn(2)
+	stdscr.MovePrint(0, (x/2)-(len(header)/2), header+" v"+version)
+	stdscr.ColorOff(2)
+
+	menuwin, _ := gc.NewWindow(y-2, x, 1, 0)
+	menuwin.Keypad(true)
+	stdscr.Refresh()
+	menuwin.Refresh()
+
+	for {
+		gc.Update()
+		if ch := menuwin.GetChar(); ch == 'q' {
+			return
+		}
 	}
 
-	window := controls.CreateWindow(nil)
-
-	window.Show()
-	window.Wait()
-	return nil
+	// 关闭服务器守护程序
+	cmd.Process.Signal(os.Interrupt)
 }
